@@ -1,6 +1,6 @@
 const { Client } = require('pg');
 
-const databaseUrl = 'postgresql://postgres:Yss123123@db.gucetfqcitbssrzdtdfw.supabase.co:5432/postgres';
+const { databaseUrl } = require('./db_config.cjs');
 
 const client = new Client({
   connectionString: databaseUrl,
