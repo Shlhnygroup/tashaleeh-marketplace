@@ -18,7 +18,7 @@ export default function AdminGuard({ children }) {
       else setProfile(null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => subscription?.unsubscribe();
   }, []);
 
   const checkUser = async () => {
@@ -53,16 +53,6 @@ export default function AdminGuard({ children }) {
       setAuthError(error.message);
       setLoading(false);
     }
-  };
-
-  // V3.1 Developer Bypass (For testing purposes)
-  const handleDevBypass = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setUser({ id: 'dev-admin', email: 'admin@tashaleeh.dev' });
-      setProfile({ id: 'dev-admin', email: 'admin@tashaleeh.dev', role: 'Admin', is_blocked: false });
-      setLoading(false);
-    }, 500);
   };
 
   if (loading) {
@@ -106,31 +96,10 @@ export default function AdminGuard({ children }) {
               />
             </div>
             {authError && <p style={{color: '#FF3B30', fontSize: 12, marginBottom: 15, textAlign: 'center'}}>{authError}</p>}
-            <button type="submit" className="save-btn" style={{width: '100%', justifyContent: 'center', marginBottom: 20}}>
+            <button type="submit" className="save-btn" style={{width: '100%', justifyContent: 'center'}}>
                تسجيل الدخول <LogIn size={18} style={{marginLeft: 8}}/>
             </button>
           </form>
-
-          {/* Developer Bypass Button */}
-          <div style={{borderTop: '1px solid #1A1A1A', paddingTop: 20, textAlign: 'center'}}>
-             <p style={{color: '#555', fontSize: 11, marginBottom: 10}}>وضع الاستكشاف النشط</p>
-             <button 
-                onClick={handleDevBypass}
-                style={{
-                  background: 'rgba(0, 216, 255, 0.1)', 
-                  color: '#00D8FF', 
-                  border: '1px solid #00D8FF', 
-                  padding: '10px 20px', 
-                  borderRadius: 12,
-                  fontSize: 13,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  width: '100%'
-                }}
-             >
-                دخول سريع (للاستكشاف بدون قاعدة بيانات) 🔓
-             </button>
-          </div>
         </div>
       </div>
     );

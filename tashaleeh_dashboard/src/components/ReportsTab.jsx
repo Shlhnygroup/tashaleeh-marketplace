@@ -20,7 +20,7 @@ export default function ReportsTab({ logAction }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('reports')
-      .select('*, reporter:reporter_id(email), reported:reported_id(email)')
+      .select('*, reporter:profiles!reporter_id(email), reported:profiles!reported_id(email)')
       .order('created_at', { ascending: false });
     
     if (data) setReports(data);
