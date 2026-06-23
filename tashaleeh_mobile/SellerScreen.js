@@ -109,14 +109,23 @@ export default function SellerScreen({ navigate }) {
 
   const saveSellerProfile = async (updates) => {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const prevProfile = sellerProfile;
     const newProfile = { ...sellerProfile, ...updates };
-    setSellerProfile(newProfile);
-    
-    await supabase
+    setSellerProfile(newProfile); // تحديث تفاؤلي
+
+    const { error } = await supabase
       .from('seller_profiles')
       .update(updates)
       .eq('id', user.id);
-      
+
+    if (error) {
+      setSellerProfile(prevProfile); // تراجع عند الفشل
+      if (Platform.OS === 'web') alert('تعذّر حفظ الإعداد: ' + error.message);
+      else Alert.alert('خطأ', 'تعذّر حفظ الإعداد: ' + error.message);
+      return;
+    }
+
     // Re-fetch requests after updating filters
     fetchRequests();
   };
@@ -128,6 +137,8 @@ export default function SellerScreen({ navigate }) {
       let query = supabase
         .from('requests')
         .select('*')
+        .eq('status', 'open')
+        .eq('is_hidden', false)
         .order('created_at', { ascending: false });
 
       const { data, error } = await query;
@@ -185,13 +196,15 @@ export default function SellerScreen({ navigate }) {
     setPublicImageUrl("");
     setModalVisible(true);
 
-    // V2: Increment View Count purely for the buyer's info
-    await supabase.rpc('increment_request_views', { request_id: req.id });
+    // V2: زيادة عداد المشاهدة لإعلام المشتري (مع فحص الخطأ بدل الفشل الصامت)
+    const { error: viewErr } = await supabase.rpc('increment_request_views', { request_id: req.id });
+    if (viewErr) console.log('increment_request_views error:', viewErr.message);
   };
 
   const rejectRequest = async (requestId) => {
-    // V2: Increment Rejections Count for the buyer
-    await supabase.rpc('increment_request_rejections', { request_id: requestId });
+    // V2: زيادة عداد الاعتذار للمشتري (مع فحص الخطأ)
+    const { error: rejErr } = await supabase.rpc('increment_request_rejections', { request_id: requestId });
+    if (rejErr) console.log('increment_request_rejections error:', rejErr.message);
     // Filter out locally to hide it from this seller
     if (Platform.OS === 'web') {
        try {
@@ -646,7 +659,7 @@ const styles = StyleSheet.create({
   settingSub: { color: '#666', textAlign: 'right', fontSize: 12, marginTop: 4 },
 
   brandsSelectionGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
-  brandSelectChip: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#111', borderWeight: 1, borderColor: '#333', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, gap: 5, borderWidth: 1 },
+  brandSelectChip: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#111', borderColor: '#333', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, gap: 5, borderWidth: 1 },
   brandSelectChipActive: { backgroundColor: '#00D8FF', borderColor: '#00D8FF' },
   brandSelectText: { color: '#888', fontSize: 13, fontWeight: 'bold' },
   brandSelectTextActive: { color: '#000' },

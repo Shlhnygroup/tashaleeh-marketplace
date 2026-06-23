@@ -113,6 +113,8 @@ export default function AdminDashboard() {
     if (!error) {
       alert('تم الحفظ بنجاح!');
       logAction('UPDATE_SETTINGS', 'app_settings', '1', appSettings);
+    } else {
+      alert('فشل الحفظ: ' + error.message);
     }
     setSaving(false);
   };
@@ -124,6 +126,8 @@ export default function AdminDashboard() {
       setCarBrands([...carBrands, data[0]]);
       logAction('ADD_BRAND', 'car_brand', data[0].id.toString(), { name: newBrand });
       setNewBrand('');
+    } else if (error) {
+      alert(error.code === '23505' ? 'الماركة موجودة مسبقاً.' : 'تعذّر إضافة الماركة: ' + error.message);
     }
   };
 
@@ -133,6 +137,8 @@ export default function AdminDashboard() {
     if (!error) {
       setCarBrands(carBrands.filter(b => b.id !== id));
       logAction('DELETE_BRAND', 'car_brand', id.toString());
+    } else {
+      alert('تعذّر الحذف: ' + error.message);
     }
   };
 

@@ -146,7 +146,7 @@ export default function BuyerScreen({ navigate }) {
       if (!user) {
         setSubmitLoading(false);
         Alert.alert("خطأ", "يجب تسجيل الدخول أولاً.");
-        navigate('Auth');
+        supabase.auth.signOut();
         return;
       }
 
@@ -308,8 +308,14 @@ export default function BuyerScreen({ navigate }) {
       .eq('id', activeRequestForClosing.id);
 
     setSubmitLoading(false);
+
+    if (error) {
+      if (Platform.OS === 'web') alert('تعذّر تحديث الطلب: ' + error.message);
+      else Alert.alert('خطأ', 'تعذّر تحديث الطلب: ' + error.message);
+      return;
+    }
     setClosingModal(false);
-    
+
     if (!error) {
       if (status === 'bought') {
         // Find if there's a winner (last person chatted with or first offer?)
@@ -587,7 +593,7 @@ export default function BuyerScreen({ navigate }) {
 
             <ScrollView showsVerticalScrollIndicator={true}>
                {carBrandsList
-                 .filter(b => b.name.includes(brandSearchQuery))
+                 .filter(b => b.name.toLowerCase().includes(brandSearchQuery.toLowerCase()))
                  .map((brand, idx) => (
                  <TouchableOpacity key={idx} style={styles.cityOption} onPress={() => { setSelectedBrand(brand.name); setBrandModalVisible(false); setBrandSearchQuery(""); }}>
                    <Text style={[styles.cityOptionText, selectedBrand === brand.name && {color: '#FF8C00', fontWeight: 'bold'}]}>{brand.name}</Text>
@@ -595,7 +601,7 @@ export default function BuyerScreen({ navigate }) {
                  </TouchableOpacity>
                ))}
                
-               {carBrandsList.filter(b => b.name.includes(brandSearchQuery)).length === 0 && (
+               {carBrandsList.filter(b => b.name.toLowerCase().includes(brandSearchQuery.toLowerCase())).length === 0 && (
                    <Text style={{color: '#888', textAlign: 'center', marginTop: 30}}>لا توجد نتائج مطابقة لبحثك</Text>
                )}
             </ScrollView>
@@ -796,7 +802,7 @@ const styles = StyleSheet.create({
   whatsappBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 
   // V2.1 Stats and Closing
-  statsRow: { flexDirection: 'row-reverse', justifyContent: 'space-around', backgroundColor: '#0A0A0A', padding: 12, borderRadius: 12, marginBottom: 15, borderWeight: 1, borderColor: '#222', borderWidth: 1 },
+  statsRow: { flexDirection: 'row-reverse', justifyContent: 'space-around', backgroundColor: '#0A0A0A', padding: 12, borderRadius: 12, marginBottom: 15, borderColor: '#222', borderWidth: 1 },
   statItem: { alignItems: 'center' },
   statVal: { color: '#FFF', fontSize: 16, fontWeight: '900' },
   statLab: { color: '#666', fontSize: 10, fontWeight: 'bold', marginTop: 2 },

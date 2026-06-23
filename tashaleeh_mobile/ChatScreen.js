@@ -37,8 +37,9 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
   const targetName = params?.other_party_name || 'العميل';
 
   useEffect(() => {
+    if (!request_id || !receiver_id || !currentUser?.id) return; // حارس: لا تشترك قبل توفّر معرّفات المحادثة
     fetchMessages();
-    
+
     // Subscribe to new real-time messages for this request
     const subscription = supabase
       .channel(`chat_${request_id}_${[currentUser.id, receiver_id].sort().join('-')}`) // Standardized channel name
@@ -56,7 +57,8 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
            (newMsg.sender_id === receiver_id && newMsg.receiver_id === currentUser.id);
            
          if (isRelevant) {
-           setMessages(prev => [...prev, newMsg]);
+           // منع تكرار الرسالة لو وصل نفس الحدث مرتين
+           setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
            scrollToBottom();
          }
       })
@@ -65,7 +67,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, []);
+  }, [request_id, receiver_id, currentUser?.id]);
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -200,21 +202,36 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
       file_url: publicFileUrl // Adding file support
     };
 
+    // احفظ القيم لاسترجاعها لو فشل الإرسال (حتى لا تضيع الرسالة)
+    const prev = { inputText, imageUri, publicImageUrl, fileUri, fileName, publicFileUrl };
+    const restore = () => {
+      setInputText(prev.inputText);
+      setImageUri(prev.imageUri);
+      setPublicImageUrl(prev.publicImageUrl);
+      setFileUri(prev.fileUri);
+      setFileName(prev.fileName);
+      setPublicFileUrl(prev.publicFileUrl);
+    };
+
     setInputText('');
     setImageUri(null);
     setPublicImageUrl("");
     setFileUri(null);
     setFileName("");
     setPublicFileUrl("");
-    
+
     try {
       const { error } = await supabase.from('messages').insert([newMessage]);
-      
+
       if (error) {
-        console.log('Error sending msg:', error);
+        restore();
+        if (Platform.OS === 'web') alert('تعذّر إرسال الرسالة: ' + error.message);
+        else Alert.alert('فشل الإرسال', 'تعذّر إرسال الرسالة، حاول مرة أخرى.');
       }
     } catch (err) {
-      console.log('Network error sending msg:', err);
+      restore();
+      if (Platform.OS === 'web') alert('فشل الاتصال، تعذّر إرسال الرسالة.');
+      else Alert.alert('خطأ', 'فشل الاتصال، تعذّر إرسال الرسالة.');
     } finally {
       setIsProcessing(false);
     }
@@ -335,9 +352,9 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
             onChangeText={setInputText}
           />
           <TouchableOpacity 
-            style={[styles.sendButton, {backgroundColor: primaryColor, opacity: (imageUploading) ? 0.5 : 1}]} 
+            style={[styles.sendButton, {backgroundColor: primaryColor, opacity: (imageUploading || fileUploading) ? 0.5 : 1}]}
             onPress={sendMessage}
-            disabled={imageUploading}
+            disabled={imageUploading || fileUploading}
           >
             <Ionicons name="send" size={20} color="#000" />
           </TouchableOpacity>
