@@ -90,5 +90,30 @@ $$;
 GRANT EXECUTE ON FUNCTION public.complete_purchase(uuid, uuid, numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rate_seller(uuid, numeric) TO authenticated;
 
+-- ------------------------------------------------------------
+-- إصلاح علاقة action_logs.admin_id → profiles
+-- (حتى يعرض سجل العمليات في لوحة الأدمن اسم الموظف بدل أن يفشل)
+-- ------------------------------------------------------------
+DO $$
+DECLARE c record;
+BEGIN
+  FOR c IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class rel       ON rel.oid = con.conrelid
+    JOIN pg_namespace ns    ON ns.oid = rel.relnamespace
+    JOIN unnest(con.conkey) AS k(attnum) ON true
+    JOIN pg_attribute att   ON att.attrelid = rel.oid AND att.attnum = k.attnum
+    WHERE con.contype = 'f' AND ns.nspname = 'public'
+      AND rel.relname = 'action_logs' AND att.attname = 'admin_id'
+  LOOP
+    EXECUTE format('ALTER TABLE public.action_logs DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
+
+ALTER TABLE public.action_logs
+  ADD CONSTRAINT action_logs_admin_id_fkey
+  FOREIGN KEY (admin_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
 NOTIFY pgrst, 'reload schema';
-SELECT '✅ Migration V4.2: حلقة البيع المالية + التقييم الصحيح جاهزة.' AS status;
+SELECT '✅ Migration V4.2: حلقة البيع المالية + التقييم الصحيح + علاقة سجل العمليات جاهزة.' AS status;

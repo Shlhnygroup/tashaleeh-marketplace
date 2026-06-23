@@ -14,7 +14,7 @@ export default function AuditLogs() {
     setLoading(true);
     const { data, error } = await supabase
       .from('action_logs')
-      .select('*, admin:admin_id(email)')
+      .select('*, admin:profiles!admin_id(email)')
       .order('created_at', { ascending: false });
     
     if (data) setLogs(data);
@@ -56,8 +56,8 @@ export default function AuditLogs() {
                     </div>
                   </td>
                   <td>
-                    <span className={`log-badge ${log.action.toLowerCase()}`}>
-                      {log.action}
+                    <span className={`log-badge ${(log.action || '').toLowerCase()}`}>
+                      {log.action || '-'}
                     </span>
                   </td>
                   <td>{log.target_type || '-'}</td>

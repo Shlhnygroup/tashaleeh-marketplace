@@ -7,6 +7,7 @@ export default function BannersTab({ logAction }) {
   const [loading, setLoading] = useState(true);
   const [newImage, setNewImage] = useState('');
   const [newLink, setNewLink] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchBanners();
@@ -19,9 +20,33 @@ export default function BannersTab({ logAction }) {
     setLoading(false);
   };
 
+  // رفع صورة فعلية من جهاز الأدمن إلى التخزين ثم تعبئة الرابط تلقائياً
+  const uploadBannerImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = (file.name.split('.').pop() || 'jpg');
+      const path = `banners/${user?.id || 'admin'}_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('parts_images').upload(path, file, { contentType: file.type, upsert: true });
+      if (error) {
+        alert('فشل رفع الصورة: ' + error.message);
+      } else {
+        const { data: { publicUrl } } = supabase.storage.from('parts_images').getPublicUrl(path);
+        setNewImage(publicUrl);
+      }
+    } catch (err) {
+      alert('خطأ في رفع الصورة: ' + err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = ''; // اسمح بإعادة اختيار نفس الملف
+    }
+  };
+
   const addBanner = async (e) => {
     e.preventDefault();
-    if (!newImage) return alert("يجب إدخال رابط الصورة");
+    if (!newImage) return alert("يجب إدخال رابط الصورة أو رفع صورة");
 
     const { data, error } = await supabase.from('app_banners').insert([{
       image_url: newImage,
@@ -65,14 +90,18 @@ export default function BannersTab({ logAction }) {
       <div className="settings-card" style={{marginBottom: 30}}>
          <h3>إضافة بنر جديد</h3>
          <form onSubmit={addBanner} style={{display: 'flex', gap: 10, marginTop: 15, flexWrap: 'wrap'}}>
-            <input 
-               type="text" 
-               className="dark-input" 
-               placeholder="رابط الصورة (URL)" 
+            <input
+               type="text"
+               className="dark-input"
+               placeholder="رابط الصورة أو ارفع من جهازك"
                value={newImage}
                onChange={e => setNewImage(e.target.value)}
                style={{flex: 2, minWidth: 200}}
             />
+            <label className="save-btn" style={{flex: 1, minWidth: 130, cursor: uploading ? 'wait' : 'pointer', backgroundColor: '#1A1A1A', borderColor: '#333', color: '#00D8FF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}>
+               {uploading ? 'جاري الرفع...' : <>رفع صورة <ImageIcon size={16} style={{marginRight: 5}}/></>}
+               <input type="file" accept="image/*" onChange={uploadBannerImage} style={{display: 'none'}} disabled={uploading} />
+            </label>
             <input 
                type="text" 
                className="dark-input" 
