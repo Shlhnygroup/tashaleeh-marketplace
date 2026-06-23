@@ -115,5 +115,21 @@ ALTER TABLE public.action_logs
   ADD CONSTRAINT action_logs_admin_id_fkey
   FOREIGN KEY (admin_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
+-- ------------------------------------------------------------
+-- جدول رفض البائعين للطلبات (حتى يبقى الرفض محفوظاً على كل الأجهزة)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.request_rejections (
+  request_id uuid REFERENCES public.requests(id) ON DELETE CASCADE,
+  seller_id  uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (request_id, seller_id)
+);
+
+ALTER TABLE public.request_rejections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Sellers manage own rejections" ON public.request_rejections;
+CREATE POLICY "Sellers manage own rejections" ON public.request_rejections
+  FOR ALL USING (auth.uid() = seller_id) WITH CHECK (auth.uid() = seller_id);
+
 NOTIFY pgrst, 'reload schema';
-SELECT '✅ Migration V4.2: حلقة البيع المالية + التقييم الصحيح + علاقة سجل العمليات جاهزة.' AS status;
+SELECT '✅ Migration V4.2: حلقة البيع + التقييم + علاقة سجل العمليات + جدول رفض البائعين جاهزة.' AS status;

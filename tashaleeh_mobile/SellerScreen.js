@@ -134,6 +134,8 @@ export default function SellerScreen({ navigate }) {
     // Allow passing brands directly to avoid stale state closure on refresh
     const activeBrands = brandsOverride ?? sellerProfile.handled_brands;
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       let query = supabase
         .from('requests')
         .select('*')
@@ -147,15 +149,17 @@ export default function SellerScreen({ navigate }) {
         if (Platform.OS === 'web') alert('خطأ: ' + error.message);
         else Alert.alert('خطأ', error.message);
       } else {
-        let visibleData = data;
-        // فلترة الطلبات المرفوضة محلياً إن وجدت (للويب)
-        if (Platform.OS === 'web') {
-            try {
-               const hidden = JSON.parse(localStorage.getItem('hiddenRequests')) || [];
-               visibleData = data.filter(r => !hidden.includes(r.id));
-            } catch(e) {}
+        // استبعاد الطلبات التي سبق أن رفضها هذا البائع (محفوظة في القاعدة)
+        let rejectedIds = new Set();
+        if (user) {
+          const { data: rej } = await supabase
+            .from('request_rejections')
+            .select('request_id')
+            .eq('seller_id', user.id);
+          if (rej) rejectedIds = new Set(rej.map(r => r.request_id));
         }
-        
+        let visibleData = data.filter(r => !rejectedIds.has(r.id));
+
         // Filter based on seller's handled brands if any are selected
         if (activeBrands && activeBrands.length > 0) {
           setRequests(visibleData.filter(r => activeBrands.includes(r.car_brand)));
@@ -202,16 +206,16 @@ export default function SellerScreen({ navigate }) {
   };
 
   const rejectRequest = async (requestId) => {
-    // V2: زيادة عداد الاعتذار للمشتري (مع فحص الخطأ)
-    const { error: rejErr } = await supabase.rpc('increment_request_rejections', { request_id: requestId });
-    if (rejErr) console.log('increment_request_rejections error:', rejErr.message);
-    // Filter out locally to hide it from this seller
-    if (Platform.OS === 'web') {
-       try {
-          const hidden = JSON.parse(localStorage.getItem('hiddenRequests')) || [];
-          hidden.push(requestId);
-          localStorage.setItem('hiddenRequests', JSON.stringify(hidden));
-       } catch(e) {}
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // سجّل الرفض في القاعدة (دائم وعبر كل الأجهزة). المفتاح الأساسي يمنع التكرار.
+    const { error: insErr } = await supabase
+      .from('request_rejections')
+      .insert({ request_id: requestId, seller_id: user.id });
+    // زِد عداد الاعتذار للمشتري مرة واحدة فقط (عند أول رفض = عند عدم وجود تعارض)
+    if (!insErr) {
+      const { error: rejErr } = await supabase.rpc('increment_request_rejections', { request_id: requestId });
+      if (rejErr) console.log('increment_request_rejections error:', rejErr.message);
     }
     setRequests(requests.filter(r => r.id !== requestId));
     if (Platform.OS === 'web') alert("تم تسجيل اعتذارك للمشتري وإخفاء الطلب من عندك.");

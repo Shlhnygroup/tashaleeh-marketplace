@@ -181,6 +181,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
       }
     } catch (e) {
       console.log("File upload failed:", e);
+      Alert.alert("خطأ", "تعذّر رفع الملف، حاول مرة أخرى.");
     } finally {
       setFileUploading(false);
       setIsProcessing(false);
@@ -257,7 +258,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <View>
               <Text style={styles.headerTitle}>{targetName}</Text>
-              <Text style={[styles.headerSubtitle, {color: primaryColor}]}>متصل الآن 🟢</Text>
+              <Text style={[styles.headerSubtitle, {color: '#888'}]}>محادثة بخصوص الطلب</Text>
             </View>
             <View style={[styles.avatar, {borderColor: primaryColor}]}>
               <Ionicons name="person" size={24} color={primaryColor} />

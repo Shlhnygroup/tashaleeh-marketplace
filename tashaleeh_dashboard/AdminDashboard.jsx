@@ -58,8 +58,8 @@ export default function AdminDashboard() {
         supabase.from('requests').select('id', { count: 'exact', head: true }),
         supabase.from('responses').select('id', { count: 'exact', head: true }),
         supabase.from('messages').select('id', { count: 'exact', head: true }),
-        supabase.from('seller_profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'Buyer'), // V3.4: Fetch Buyers
+        supabase.from('seller_profiles').select('id', { count: 'exact', head: true }).eq('is_online', true), // المتاجر النشطة (المتصلة) فقط
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'Buyer'), // كل المشترين
         supabase.from('requests').select('car_brand')
       ]);
 
