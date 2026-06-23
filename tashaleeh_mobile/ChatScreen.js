@@ -351,6 +351,9 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
             placeholderTextColor="#888"
             value={inputText}
             onChangeText={setInputText}
+            returnKeyType="send"
+            onSubmitEditing={sendMessage}
+            blurOnSubmit={false}
           />
           <TouchableOpacity 
             style={[styles.sendButton, {backgroundColor: primaryColor, opacity: (imageUploading || fileUploading) ? 0.5 : 1}]}

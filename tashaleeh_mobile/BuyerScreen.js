@@ -521,6 +521,14 @@ export default function BuyerScreen({ navigate }) {
                       </View>
                     </View>
 
+                    {req.status && req.status !== 'open' ? (
+                      <View style={{alignSelf: 'flex-end', marginBottom: 10, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, backgroundColor: req.status === 'bought' ? 'rgba(110,255,53,0.12)' : 'rgba(255,59,48,0.12)'}}>
+                        <Text style={{fontSize: 12, fontWeight: 'bold', color: req.status === 'bought' ? '#6eff35' : '#FF3B30'}}>
+                          {req.status === 'bought' ? 'تم الشراء ✅' : (req.status === 'cancelled' ? 'ملغي' : 'مغلق')}
+                        </Text>
+                      </View>
+                    ) : null}
+
                     {/* V2 Stats Row */}
                     <View style={styles.statsRow}>
                        <View style={styles.statItem}><Text style={styles.statVal}>{req.views || 0}</Text><Text style={styles.statLab}>مشاهدة</Text></View>

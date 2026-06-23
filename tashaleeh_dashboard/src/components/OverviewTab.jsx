@@ -73,7 +73,11 @@ export default function Overview({ stats, topBrands, recentRequests, loading }) 
                       <td><CarFront size={14} style={{marginLeft: 5}}/> <b>{req.car_brand}</b> ({req.model_year})</td>
                       <td><span className="offers-badge">{req.responses[0]?.count || 0} عرض</span></td>
                       <td>{new Date(req.created_at).toLocaleDateString('ar-SA')}</td>
-                      <td><span className={`status-badge ${req.status}`}>{req.status === 'open' ? 'نشط' : 'مغلق'}</span></td>
+                      <td><span className={`status-badge ${req.status}`}>{
+                        req.status === 'open' ? 'نشط' :
+                        req.status === 'bought' ? 'تم البيع' :
+                        req.status === 'cancelled' ? 'ملغي' : 'مغلق'
+                      }</span></td>
                     </tr>
                   ))
                 )}
