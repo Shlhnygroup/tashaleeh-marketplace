@@ -128,7 +128,7 @@ export default function ProfileScreen({ navigate, currentUser }) {
           location: profile.location,
           avatar_url: profile.avatar_url,
           phone: profile.phone,
-          updated_at: new Date()
+          updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
 
@@ -149,7 +149,7 @@ export default function ProfileScreen({ navigate, currentUser }) {
   };
 
   const handleCancel = () => {
-    setProfile({ ...originalProfile });
+    if (originalProfile) setProfile({ ...originalProfile });
     navigate('Home');
   };
 
@@ -249,7 +249,7 @@ export default function ProfileScreen({ navigate, currentUser }) {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>المنطقة (Location)</Text>
             <View style={styles.regionGrid}>
-              {SAUDI_CITIES.slice(0, 10).map((city) => (
+              {SAUDI_CITIES.map((city) => (
                 <TouchableOpacity 
                   key={city}
                   style={[styles.regionChip, profile.location === city && styles.regionChipActive]}

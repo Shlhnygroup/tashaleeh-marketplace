@@ -17,8 +17,13 @@ export default function UsersTab({ logAction }) {
       .from('profiles')
       .select('*')
       .order('updated_at', { ascending: false });
-    
-    if (data) setUsers(data);
+
+    if (error) {
+      console.error('fetchUsers error:', error);
+      alert('تعذّر جلب المستخدمين: ' + error.message);
+    } else if (data) {
+      setUsers(data);
+    }
     setLoading(false);
   };
 
@@ -57,19 +62,24 @@ export default function UsersTab({ logAction }) {
 
   const updateRole = async (id, newRole, oldRole, sellerData = null) => {
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', id);
-    if (!error) {
-      setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
-      logAction('CHANGE_ROLE', 'profile', id, { oldRole, newRole, ...sellerData });
-      if (newRole === 'Seller') {
-        await supabase.from('seller_profiles').upsert([{ 
-           id: id, 
-           handled_brands: [], 
-           is_online: true,
-           manager_name: sellerData?.managerName || '',
-           store_location: sellerData?.location || '',
-           cr_document_url: sellerData?.cr || ''
-        }]);
-      }
+    if (error) {
+      alert('تعذّر تغيير الرتبة: ' + error.message);
+      return;
+    }
+    setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
+    logAction('CHANGE_ROLE', 'profile', id, { oldRole, newRole, ...sellerData });
+    if (newRole === 'Seller') {
+      // حافظ على ماركات البائع السابقة إن كان له سجل قديم بدل تصفيرها
+      const { data: existing } = await supabase.from('seller_profiles').select('handled_brands').eq('id', id).single();
+      const { error: spError } = await supabase.from('seller_profiles').upsert([{
+         id: id,
+         handled_brands: existing?.handled_brands || [],
+         is_online: true,
+         manager_name: sellerData?.managerName || '',
+         store_location: sellerData?.location || '',
+         cr_document_url: sellerData?.cr || ''
+      }]);
+      if (spError) alert('تم تغيير الرتبة لكن تعذّر حفظ بيانات المتجر: ' + spError.message);
     }
   };
 
@@ -173,7 +183,7 @@ export default function UsersTab({ logAction }) {
                   <tr key={user.id} className={user.is_blocked ? 'row-blocked' : ''}>
                     <td>
                       <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
-                         <div className="avatar-mini" style={{backgroundImage: `url(${user.avatar_url || 'https://via.placeholder.com/40'})`}}></div>
+                         <div className="avatar-mini" style={{backgroundImage: user.avatar_url ? `url(${user.avatar_url})` : 'none', backgroundColor: '#1A1A1A'}}></div>
                          <b>{user.display_name || 'بدون اسم'}</b>
                       </div>
                     </td>
