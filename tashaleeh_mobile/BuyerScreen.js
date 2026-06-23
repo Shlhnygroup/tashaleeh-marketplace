@@ -50,6 +50,7 @@ export default function BuyerScreen({ navigate }) {
   const [ratingModal, setRatingModal] = useState(false);
   const [sellerToRate, setSellerToRate] = useState(null);
   const [userRating, setUserRating] = useState(5);
+  const [winnerSelectModal, setWinnerSelectModal] = useState(false); // اختيار البائع الفائز عند الشراء
 
   useEffect(() => {
     fetchBrandsFromDB();
@@ -316,29 +317,44 @@ export default function BuyerScreen({ navigate }) {
     }
     setClosingModal(false);
 
-    if (!error) {
-      if (status === 'bought') {
-        // Find if there's a winner (last person chatted with or first offer?)
-        // For MVP simplicity, we'll ask who to rate if they have offers.
-        if (activeRequestForClosing.responses?.length > 0) {
-           setSellerToRate(activeRequestForClosing.responses[0].seller_id);
-           setRatingModal(true);
-        }
-      }
-      fetchMyRequests();
+    fetchMyRequests();
+  };
+
+  // تأكيد الشراء من بائع محدّد: يسجّل العملية المالية (RPC) ويغلق الطلب ثم يفتح التقييم
+  const confirmPurchase = async (response) => {
+    if (!activeRequestForClosing) return;
+    setSubmitLoading(true);
+    const { error } = await supabase.rpc('complete_purchase', {
+      p_request_id: activeRequestForClosing.id,
+      p_seller_id: response.seller_id,
+      p_sale_amount: response.price
+    });
+    setSubmitLoading(false);
+    setWinnerSelectModal(false);
+
+    if (error) {
+      if (Platform.OS === 'web') alert('تعذّر تأكيد الشراء: ' + error.message);
+      else Alert.alert('خطأ', 'تعذّر تأكيد الشراء: ' + error.message);
+      return;
     }
+    fetchMyRequests();
+    // افتح تقييم البائع الفائز
+    setSellerToRate(response.seller_id);
+    setUserRating(5);
+    setRatingModal(true);
   };
 
   const submitRating = async () => {
     setSubmitLoading(true);
-    // Fetch current rating to average it (Simple mock for now)
-    const { data: profile } = await supabase.from('seller_profiles').select('rating').eq('id', sellerToRate).single();
-    const newRating = profile ? (profile.rating + userRating) / 2 : userRating;
-    
-    await supabase.from('seller_profiles').update({ rating: newRating }).eq('id', sellerToRate);
+    // تقييم تراكمي صحيح عبر RPC (المشتري لا يملك صلاحية تعديل seller_profiles مباشرة)
+    const { error } = await supabase.rpc('rate_seller', { p_seller_id: sellerToRate, p_rating: userRating });
     setSubmitLoading(false);
     setRatingModal(false);
-    Alert.alert("شكراً لك", "تم تقييم البائع بنجاح، شكراً لمساهمتك في موثوقية التطبيق.");
+    if (error) {
+      Alert.alert("خطأ", "تعذّر حفظ التقييم: " + error.message);
+    } else {
+      Alert.alert("شكراً لك", "تم تقييم البائع بنجاح، شكراً لمساهمتك في موثوقية التطبيق.");
+    }
   };
 
   const openClosingMenu = (req) => {
@@ -646,7 +662,16 @@ export default function BuyerScreen({ navigate }) {
              <Text style={[styles.modalTitle, {marginBottom: 10}]}>إغلاق الطلب ✅</Text>
              <Text style={{color: '#888', textAlign: 'right', marginBottom: 20}}>هل وفقت في شراء القطعة أم ترغب في إلغاء الطلب؟</Text>
              
-             <TouchableOpacity style={[styles.submitButton, {backgroundColor: '#6eff35', marginBottom: 15}]} onPress={() => closeRequest('bought')}>
+             <TouchableOpacity style={[styles.submitButton, {backgroundColor: '#6eff35', marginBottom: 15}]} onPress={() => {
+                setClosingModal(false);
+                if (activeRequestForClosing?.responses?.length > 0) {
+                  setWinnerSelectModal(true);
+                } else if (Platform.OS === 'web') {
+                  alert('لا توجد عروض على هذا الطلب لاختيار البائع منها.');
+                } else {
+                  Alert.alert('تنبيه', 'لا توجد عروض على هذا الطلب لاختيار البائع منها.');
+                }
+             }}>
                 <Text style={styles.submitButtonText}>نعم، تم الشراء بنجاح 💸</Text>
              </TouchableOpacity>
 
@@ -655,6 +680,32 @@ export default function BuyerScreen({ navigate }) {
              </TouchableOpacity>
 
              <TouchableOpacity style={{marginTop: 20, alignItems: 'center'}} onPress={() => setClosingModal(false)}>
+                <Text style={{color: '#666'}}>تراجع</Text>
+             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Winner Seller Selection Modal — اختيار البائع الفائز قبل تأكيد الشراء */}
+      <Modal visible={winnerSelectModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, {height: 'auto', maxHeight: '75%', paddingBottom: 30}]}>
+             <Text style={[styles.modalTitle, {marginBottom: 5}]}>من أتممت الصفقة معه؟ 🤝</Text>
+             <Text style={{color: '#888', textAlign: 'right', marginBottom: 20}}>اختر البائع الذي اشتريت منه ليُسجَّل البيع ويُقيَّم.</Text>
+             <ScrollView showsVerticalScrollIndicator={false}>
+                {activeRequestForClosing?.responses?.map((resp) => (
+                  <TouchableOpacity key={resp.id} style={styles.offerCard} onPress={() => confirmPurchase(resp)}>
+                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <View style={{backgroundColor: '#6eff35', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10}}>
+                           <Text style={{color: '#000', fontWeight: '900', fontSize: 13}}>اخترت هذا ✅</Text>
+                        </View>
+                        <Text style={styles.offerPrice}>{resp.price} <Text style={{fontSize: 12, color: '#888'}}>ريال</Text></Text>
+                     </View>
+                     {resp.notes ? <Text style={styles.offerNotes}>"{resp.notes}"</Text> : null}
+                  </TouchableOpacity>
+                ))}
+             </ScrollView>
+             <TouchableOpacity style={{marginTop: 15, alignItems: 'center'}} onPress={() => setWinnerSelectModal(false)}>
                 <Text style={{color: '#666'}}>تراجع</Text>
              </TouchableOpacity>
           </View>
