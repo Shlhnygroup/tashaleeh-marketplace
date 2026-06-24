@@ -6,6 +6,7 @@ import BuyerScreen from './BuyerScreen';
 import SellerScreen from './SellerScreen';
 import ChatScreen from './ChatScreen'; 
 import ProfileScreen from './ProfileScreen';
+import { IS_SELLER_APP } from './appConfig';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -121,29 +122,22 @@ export default function App() {
     return <ProfileScreen navigate={navigate} currentUser={session.user} />;
   }
 
-  // Home Routes
-  if (role === 'Buyer') {
-    return <BuyerScreen navigate={navigate} />;
-  }
-
-  if (role === 'Seller') {
-    return <SellerScreen navigate={navigate} />;
-  }
-
-  if (role === 'Admin') {
+  // Home Routes — حسب نكهة التطبيق (مشتري / تاجر)، ونفس الحساب يعمل في كليهما
+  if (IS_SELLER_APP) {
+    if (role === 'Seller') {
+      return <SellerScreen navigate={navigate} />;
+    }
+    // مستخدم داخل تطبيق التجار لكنه ليس تاجراً معتمداً بعد
     return (
       <View style={{flex: 1, backgroundColor: '#070707', justifyContent: 'center', alignItems: 'center', padding: 25}}>
          <View style={{backgroundColor: '#0F0F0F', padding: 35, borderRadius: 30, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#00D8FF'}}>
             <View style={{width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0, 216, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 25}}>
-               <Text style={{fontSize: 40}}>🛡️</Text>
+               <Text style={{fontSize: 40}}>🏪</Text>
             </View>
-            <Text style={{color: '#00D8FF', fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 10}}>مرحباً بالأدمن</Text>
+            <Text style={{color: '#00D8FF', fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 10}}>حسابك كتاجر قيد المراجعة</Text>
             <Text style={{color: '#888', fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 30}}>
-               لوحة التحكم متاحة عبر المتصفح فقط على العنوان التالي:
+               شكراً لتسجيلك في منصة التجار. سيُفعّل حسابك بعد مراجعة الإدارة. للتسريع تواصل معنا عبر الواتساب. (تقدر تستخدم نفس الحساب في تطبيق المشترين للطلب الآن.)
             </Text>
-            <View style={{backgroundColor: 'rgba(0,216,255,0.05)', padding: 15, borderRadius: 15, marginBottom: 30, width: '100%', borderWidth: 1, borderColor: 'rgba(0,216,255,0.2)'}}>
-               <Text style={{color: '#00D8FF', fontWeight: 'bold', textAlign: 'center', fontSize: 14}}>localhost:5173</Text>
-            </View>
             <TouchableOpacity
               style={{backgroundColor: '#FF3B30', width: '100%', height: 52, borderRadius: 15, justifyContent: 'center', alignItems: 'center'}}
               onPress={() => supabase.auth.signOut()}
@@ -155,9 +149,6 @@ export default function App() {
     );
   }
 
-  return (
-    <View style={{flex: 1, backgroundColor: '#070707', justifyContent: 'center', alignItems: 'center'}}>
-       <ActivityIndicator size="large" color="#00D8FF" />
-    </View>
-  );
+  // تطبيق المشتري — أي مستخدم مسجّل (مشتري/تاجر/أدمن) يقدر يطلب
+  return <BuyerScreen navigate={navigate} />;
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Alert, Dimensions } from 'react-native';
 import { supabase } from './supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { FLAVOR_META, IS_SELLER_APP } from './appConfig';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -38,7 +39,7 @@ export default function AuthScreen() {
     }
   };
 
-  const primaryColor = userRole === 'Buyer' ? '#FF8C00' : '#00D8FF'; // Neon Orange vs Neon Cyan
+  const primaryColor = FLAVOR_META.primary; // لون التطبيق حسب النكهة (مشتري برتقالي / تاجر سماوي)
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -52,16 +53,16 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>سبيد تشاليح</Text>
-          <Text style={styles.headerSubtitle}>{isLogin ? 'أهلاً بعودتك، سجل دخولك للمنصة' : 'مرحباً! ابدأ رحلتك معنا بإنشاء حساب'}</Text>
+          <Text style={styles.headerTitle}>{FLAVOR_META.name}</Text>
+          <Text style={styles.headerSubtitle}>{isLogin ? FLAVOR_META.subtitleLogin : FLAVOR_META.subtitleSignup}</Text>
         </View>
 
         <View style={styles.glassCard}>
           {!isLogin && (
             <View style={styles.roleSelection}>
-              <Text style={styles.label}>سياسة المنصة:</Text>
+              <Text style={styles.label}>{IS_SELLER_APP ? 'تسجيل تاجر جديد:' : 'إنشاء حساب مشتري:'}</Text>
               <Text style={{color: '#888', fontSize: 13, textAlign: 'right', marginBottom: 10}}>
-                يتم تسجيلك كمشتري تلقائياً. إذا كنت صاحب تشليح، يرجى التواصل مع الإدارة بعد إنشاء الحساب لترقية رتبتك.
+                {FLAVOR_META.signupNote}
               </Text>
             </View>
           )}
