@@ -51,6 +51,8 @@ export default function BuyerScreen({ navigate }) {
   const [sellerToRate, setSellerToRate] = useState(null);
   const [userRating, setUserRating] = useState(5);
   const [winnerSelectModal, setWinnerSelectModal] = useState(false); // اختيار البائع الفائز عند الشراء
+  const [conversations, setConversations] = useState([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
 
   useEffect(() => {
     fetchBrandsFromDB();
@@ -72,10 +74,43 @@ export default function BuyerScreen({ navigate }) {
   };
 
   useEffect(() => {
-    if (activeTab === 'my_requests') {
-      fetchMyRequests();
-    }
+    if (activeTab === 'my_requests') fetchMyRequests();
+    else if (activeTab === 'chats') fetchConversations();
   }, [activeTab]);
+
+  // جلب كل المحادثات (Inbox) — تُجمّع حسب الطلب والطرف الآخر
+  const fetchConversations = async () => {
+    setChatsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: msgs, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const map = {};
+      for (const m of msgs || []) {
+        const other = m.sender_id === user.id ? m.receiver_id : m.sender_id;
+        const key = `${m.request_id}_${other}`;
+        if (!map[key]) map[key] = { key, request_id: m.request_id, other_id: other, last: m };
+      }
+      const convs = Object.values(map);
+      const otherIds = [...new Set(convs.map(c => c.other_id))].filter(Boolean);
+      if (otherIds.length) {
+        const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', otherIds);
+        const pmap = {};
+        (profs || []).forEach(p => { pmap[p.id] = p; });
+        convs.forEach(c => { c.other = pmap[c.other_id]; });
+      }
+      setConversations(convs);
+    } catch (err) {
+      // عند الفشل نترك القائمة فارغة
+    } finally {
+      setChatsLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -381,13 +416,18 @@ export default function BuyerScreen({ navigate }) {
 
       <View style={styles.tabsContainer}>
         <TouchableOpacity style={[styles.tabButton, activeTab === 'my_requests' && styles.tabButtonActive]} onPress={() => setActiveTab('my_requests')}>
-          <Ionicons name="list" size={20} color={activeTab === 'my_requests' ? '#000' : '#888'} />
-          <Text style={[styles.tabText, activeTab === 'my_requests' && styles.tabTextActive]}>طلباتي والعروض</Text>
+          <Ionicons name="list" size={18} color={activeTab === 'my_requests' ? '#000' : '#888'} />
+          <Text style={[styles.tabText, activeTab === 'my_requests' && styles.tabTextActive]}>طلباتي</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.tabButton, activeTab === 'chats' && styles.tabButtonActive]} onPress={() => setActiveTab('chats')}>
+          <Ionicons name="chatbubbles" size={18} color={activeTab === 'chats' ? '#000' : '#888'} />
+          <Text style={[styles.tabText, activeTab === 'chats' && styles.tabTextActive]}>محادثاتي</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.tabButton, activeTab === 'new' && styles.tabButtonActive]} onPress={() => setActiveTab('new')}>
-          <Ionicons name="add-circle" size={20} color={activeTab === 'new' ? '#000' : '#888'} />
-          <Text style={[styles.tabText, activeTab === 'new' && styles.tabTextActive]}>إرسال طلب جديد</Text>
+          <Ionicons name="add-circle" size={18} color={activeTab === 'new' ? '#000' : '#888'} />
+          <Text style={[styles.tabText, activeTab === 'new' && styles.tabTextActive]}>طلب جديد</Text>
         </TouchableOpacity>
       </View>
 
@@ -479,6 +519,39 @@ export default function BuyerScreen({ navigate }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
+      ) : activeTab === 'chats' ? (
+        <View style={styles.container}>
+          {chatsLoading ? (
+            <ActivityIndicator size="large" color="#FF8C00" style={{marginTop: 50}} />
+          ) : conversations.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="chatbubbles-outline" size={50} color="#FF8C00" />
+              </View>
+              <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
+              <Text style={styles.emptySub}>تبدأ المحادثة بعد ما يقدّم تاجر عرضاً على طلبك وتضغط "دردش".</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {conversations.map((c) => (
+                <TouchableOpacity key={c.key} style={[styles.requestCard, {paddingVertical: 16}]} onPress={() => navigate('Chat', { request_id: c.request_id, receiver_id: c.other_id, other_party_name: c.other?.display_name || c.other?.email || 'التاجر' })}>
+                  <View style={{flexDirection: 'row-reverse', alignItems: 'center', gap: 12}}>
+                    <View style={{width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,140,0,0.1)', justifyContent: 'center', alignItems: 'center'}}>
+                      <Ionicons name="person" size={24} color="#FF8C00" />
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15, textAlign: 'right'}}>{c.other?.display_name || c.other?.email || 'التاجر'}</Text>
+                      <Text numberOfLines={1} style={{color: '#888', fontSize: 13, textAlign: 'right', marginTop: 4}}>
+                        {c.last?.image_url ? '📷 صورة' : (c.last?.file_url ? '📎 ملف' : (c.last?.content || ''))}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-back" size={20} color="#555" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
       ) : (
         <View style={styles.container}>
           {fetchLoading ? (
