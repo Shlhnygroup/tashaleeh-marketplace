@@ -10,7 +10,10 @@ export default function SellerScreen({ navigate }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+  const [activeView, setActiveView] = useState('requests'); // 'requests' | 'chats'
+  const [conversations, setConversations] = useState([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [offerPrice, setOfferPrice] = useState('');
@@ -39,6 +42,44 @@ export default function SellerScreen({ navigate }) {
   useEffect(() => {
     initSeller();
   }, []);
+
+  useEffect(() => {
+    if (activeView === 'chats') fetchConversations();
+  }, [activeView]);
+
+  // جلب كل المحادثات (Inbox) — تُجمّع حسب الطلب والطرف الآخر (المشتري)
+  const fetchConversations = async () => {
+    setChatsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: msgs, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const map = {};
+      for (const m of msgs || []) {
+        const other = m.sender_id === user.id ? m.receiver_id : m.sender_id;
+        const key = `${m.request_id}_${other}`;
+        if (!map[key]) map[key] = { key, request_id: m.request_id, other_id: other, last: m };
+      }
+      const convs = Object.values(map);
+      const otherIds = [...new Set(convs.map(c => c.other_id))].filter(Boolean);
+      if (otherIds.length) {
+        const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', otherIds);
+        const pmap = {};
+        (profs || []).forEach(p => { pmap[p.id] = p; });
+        convs.forEach(c => { c.other = pmap[c.other_id]; });
+      }
+      setConversations(convs);
+    } catch (err) {
+      // عند الفشل نترك القائمة فارغة
+    } finally {
+      setChatsLoading(false);
+    }
+  };
 
   const initSeller = async () => {
     try {
@@ -364,7 +405,58 @@ export default function SellerScreen({ navigate }) {
         </View>
       </View>
 
-      {loading ? (
+      {/* شريط التبويب: الطلبات / محادثاتي */}
+      <View style={{flexDirection: 'row-reverse', backgroundColor: '#0A0A0A', paddingHorizontal: 16, paddingBottom: 12, gap: 10}}>
+        <TouchableOpacity
+          style={{flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, gap: 6, backgroundColor: activeView === 'requests' ? '#00D8FF' : '#111', borderWidth: 1, borderColor: activeView === 'requests' ? '#00D8FF' : '#222'}}
+          onPress={() => setActiveView('requests')}
+        >
+          <Ionicons name="list" size={18} color={activeView === 'requests' ? '#000' : '#888'} />
+          <Text style={{fontWeight: 'bold', fontSize: 14, color: activeView === 'requests' ? '#000' : '#888'}}>الطلبات</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 14, gap: 6, backgroundColor: activeView === 'chats' ? '#00D8FF' : '#111', borderWidth: 1, borderColor: activeView === 'chats' ? '#00D8FF' : '#222'}}
+          onPress={() => setActiveView('chats')}
+        >
+          <Ionicons name="chatbubbles" size={18} color={activeView === 'chats' ? '#000' : '#888'} />
+          <Text style={{fontWeight: 'bold', fontSize: 14, color: activeView === 'chats' ? '#000' : '#888'}}>محادثاتي</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeView === 'chats' ? (
+        <View style={{flex: 1, padding: 16}}>
+          {chatsLoading ? (
+            <ActivityIndicator size="large" color="#00D8FF" style={{marginTop: 50}} />
+          ) : conversations.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="chatbubbles-outline" size={50} color="#00D8FF" />
+              </View>
+              <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
+              <Text style={styles.emptySub}>تبدأ المحادثة عندما تتواصل مع مشترٍ من داخل طلبه.</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {conversations.map((c) => (
+                <TouchableOpacity key={c.key} style={[styles.glassCard, {paddingVertical: 16}]} onPress={() => navigate('Chat', { request_id: c.request_id, receiver_id: c.other_id, other_party_name: c.other?.display_name || c.other?.email || 'المشتري' })}>
+                  <View style={{flexDirection: 'row-reverse', alignItems: 'center', gap: 12}}>
+                    <View style={{width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(0,216,255,0.1)', justifyContent: 'center', alignItems: 'center'}}>
+                      <Ionicons name="person" size={24} color="#00D8FF" />
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15, textAlign: 'right'}}>{c.other?.display_name || c.other?.email || 'المشتري'}</Text>
+                      <Text numberOfLines={1} style={{color: '#888', fontSize: 13, textAlign: 'right', marginTop: 4}}>
+                        {c.last?.image_url ? '📷 صورة' : (c.last?.file_url ? '📎 ملف' : (c.last?.content || ''))}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-back" size={20} color="#555" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      ) : loading ? (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
            <ActivityIndicator size="large" color="#00D8FF" />
         </View>
