@@ -105,11 +105,12 @@ export default function SellerScreen({ navigate }) {
         }
       }
       
-      await Promise.all([
+      // نلتقط البروفايل المُحدَّث مباشرة لتفادي قراءة الحالة القديمة عند التصفية
+      const [profile] = await Promise.all([
         fetchSellerProfile(),
         fetchAllBrands()
       ]);
-      await fetchRequests();
+      await fetchRequests(profile?.handled_brands);
     } catch (err) {
       console.error(err);
     } finally {
@@ -167,8 +168,8 @@ export default function SellerScreen({ navigate }) {
       return;
     }
 
-    // Re-fetch requests after updating filters
-    fetchRequests();
+    // إعادة الجلب بعد تغيير الفلاتر — نمرّر الماركات الجديدة مباشرة لتفادي الحالة القديمة
+    fetchRequests(newProfile.handled_brands);
   };
 
   const fetchRequests = async (brandsOverride) => {
