@@ -22,8 +22,9 @@ try {
   }
 } catch (e) {}
 
-process.env.EXPO_OFFLINE = '1';
+// لا نستخدم offline حتى تتحمّل الأصول (الخطوط/الأيقونات)؛ ونتجاوز مشكلة شهادات TLS في هذه الشبكة
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 process.env.EXPO_PUBLIC_APP_FLAVOR = process.env.EXPO_PUBLIC_APP_FLAVOR || 'buyer';
 const cli = require.resolve('expo/bin/cli');
-process.argv = [process.argv[0], cli, 'start', '--offline'];
+process.argv = [process.argv[0], cli, 'start'];
 require(cli);
