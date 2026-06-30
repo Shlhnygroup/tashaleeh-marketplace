@@ -99,7 +99,7 @@ export default function BuyerScreen({ navigate }) {
       const convs = Object.values(map);
       const otherIds = [...new Set(convs.map(c => c.other_id))].filter(Boolean);
       if (otherIds.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', otherIds);
+        const { data: profs } = await supabase.from('public_profiles').select('id, display_name').in('id', otherIds);
         const pmap = {};
         (profs || []).forEach(p => { pmap[p.id] = p; });
         convs.forEach(c => { c.other = pmap[c.other_id]; });
@@ -534,13 +534,13 @@ export default function BuyerScreen({ navigate }) {
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
               {conversations.map((c) => (
-                <TouchableOpacity key={c.key} style={[styles.requestCard, {paddingVertical: 16}]} onPress={() => navigate('Chat', { request_id: c.request_id, receiver_id: c.other_id, other_party_name: c.other?.display_name || c.other?.email || 'التاجر' })}>
+                <TouchableOpacity key={c.key} style={[styles.requestCard, {paddingVertical: 16}]} onPress={() => navigate('Chat', { request_id: c.request_id, receiver_id: c.other_id, other_party_name: c.other?.display_name || 'التاجر' })}>
                   <View style={{flexDirection: 'row-reverse', alignItems: 'center', gap: 12}}>
                     <View style={{width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,140,0,0.1)', justifyContent: 'center', alignItems: 'center'}}>
                       <Ionicons name="person" size={24} color="#FF8C00" />
                     </View>
                     <View style={{flex: 1}}>
-                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15, textAlign: 'right'}}>{c.other?.display_name || c.other?.email || 'التاجر'}</Text>
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 15, textAlign: 'right'}}>{c.other?.display_name || 'التاجر'}</Text>
                       <Text numberOfLines={1} style={{color: '#888', fontSize: 13, textAlign: 'right', marginTop: 4}}>
                         {c.last?.image_url ? '📷 صورة' : (c.last?.file_url ? '📎 ملف' : (c.last?.content || ''))}
                       </Text>
