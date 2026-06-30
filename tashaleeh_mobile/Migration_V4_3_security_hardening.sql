@@ -99,6 +99,14 @@ BEGIN
     RAISE EXCEPTION 'التقييم يجب أن يكون بين 1 و 5';
   END IF;
 
+  -- منع التقييمات الوهمية: لا تقييم إلا لمن أتمّ شراءً فعلياً من هذا البائع
+  IF NOT EXISTS (
+    SELECT 1 FROM public.transactions
+    WHERE buyer_id = auth.uid() AND seller_id = p_seller_id
+  ) THEN
+    RAISE EXCEPTION 'لا يمكنك تقييم بائع لم تُتمّ معه عملية شراء';
+  END IF;
+
   SELECT COALESCE(rating, 5.0), COALESCE(rating_count, 0)
     INTO v_rating, v_count
     FROM public.seller_profiles WHERE id = p_seller_id;
@@ -116,5 +124,74 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.rate_seller(uuid, numeric) TO authenticated;
 
+-- ------------------------------------------------------------
+-- 4) منع التسجيل بدور أدمن/بائع: كل حساب جديد يبدأ "مشتري" دائماً
+--    (لا نثق بالدور القادم من المستخدم؛ الترقية من الإدارة فقط)
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (new.id, new.email, 'Buyer')
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$;
+
+-- ------------------------------------------------------------
+-- 5) تقوية complete_purchase: اشتقاق البائع/السعر من العرض الفعلي (لا نثق بقيمة العميل)
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.complete_purchase(
+  p_request_id uuid,
+  p_seller_id  uuid,
+  p_sale_amount numeric
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_buyer      uuid;
+  v_price      numeric;
+  v_commission numeric;
+  v_txn        uuid;
+BEGIN
+  SELECT buyer_id INTO v_buyer FROM public.requests WHERE id = p_request_id;
+  IF v_buyer IS NULL OR v_buyer <> auth.uid() THEN
+    RAISE EXCEPTION 'غير مصرّح: لست صاحب هذا الطلب';
+  END IF;
+
+  -- تحقّق أن للبائع عرضاً فعلياً على هذا الطلب، واشتق السعر منه
+  SELECT price INTO v_price FROM public.responses
+   WHERE request_id = p_request_id AND seller_id = p_seller_id
+   ORDER BY created_at DESC LIMIT 1;
+  IF v_price IS NULL THEN
+    RAISE EXCEPTION 'لا يوجد عرض من هذا البائع على هذا الطلب';
+  END IF;
+
+  SELECT id INTO v_txn FROM public.transactions WHERE request_id = p_request_id LIMIT 1;
+  IF v_txn IS NOT NULL THEN
+    UPDATE public.requests SET status = 'bought' WHERE id = p_request_id;
+    RETURN v_txn;
+  END IF;
+
+  SELECT COALESCE(commission_rate, 0) INTO v_commission FROM public.app_settings WHERE id = 1;
+
+  INSERT INTO public.transactions (request_id, seller_id, buyer_id, sale_amount, commission_amount, status)
+  VALUES (p_request_id, p_seller_id, auth.uid(), v_price, COALESCE(v_commission, 0), 'pending')
+  RETURNING id INTO v_txn;
+
+  UPDATE public.requests SET status = 'bought' WHERE id = p_request_id;
+  RETURN v_txn;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.complete_purchase(uuid, uuid, numeric) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';
-SELECT '✅ Migration V4.3: حماية الصلاحيات + بيانات العملاء (PII) + التقييم جاهزة.' AS status;
+SELECT '✅ Migration V4.3: حماية شاملة (صلاحيات + PII + تقييم موثّق + تسجيل آمن + بيع موثّق).' AS status;

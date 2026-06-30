@@ -71,7 +71,7 @@ export default function ProfileScreen({ navigate, currentUser }) {
     setImageUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const fileName = `uploads/${user.id}/pro_${Date.now()}.jpg`;
+      const fileName = `uploads/${user.id}/pro_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.jpg`;
       
       // ✅ استخدام base64 مباشرة — حل نهائي لمشكلة اختفاء الصورة
       const { data, error } = await supabase.storage

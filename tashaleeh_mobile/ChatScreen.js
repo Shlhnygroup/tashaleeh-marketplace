@@ -114,7 +114,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
     setImageUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const filePath = `uploads/${user.id}/chat_${Date.now()}.jpg`;
+      const filePath = `uploads/${user.id}/chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.jpg`;
 
       // ✅ base64 مباشرة — أكثر موثوقية من blob في React Native
       const { data, error } = await supabase.storage
@@ -161,7 +161,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const fileExt = fileAsset.name.split('.').pop();
-      const filePath = `chat_files/${user.id}_${Date.now()}.${fileExt}`;
+      const filePath = `chat_files/${user.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
 
       // Fetch the file as a blob
       const response = await fetch(fileAsset.uri);

@@ -283,7 +283,7 @@ export default function SellerScreen({ navigate }) {
     setImageUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const filePath = `uploads/${user.id}/seller_${Date.now()}.jpg`;
+      const filePath = `uploads/${user.id}/seller_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.jpg`;
 
       // ✅ استخدام base64 مباشرة — أكثر موثوقية
       const { data, error } = await supabase.storage

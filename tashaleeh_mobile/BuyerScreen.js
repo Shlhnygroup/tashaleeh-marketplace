@@ -139,7 +139,7 @@ export default function BuyerScreen({ navigate }) {
     setImageUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const filePath = `uploads/${user.id}/buyer_${Date.now()}.jpg`;
+      const filePath = `uploads/${user.id}/buyer_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.jpg`;
 
       // ✅ استخدام base64 مباشرة — أكثر موثوقية من blob في React Native
       const { data, error } = await supabase.storage

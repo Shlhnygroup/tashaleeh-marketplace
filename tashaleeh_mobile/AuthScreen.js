@@ -24,10 +24,10 @@ export default function AuthScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) Alert.alert('فشل الدخول', error.message);
       } else {
+        // لا نرسل الدور — كل حساب جديد يبدأ "مشتري" من القاعدة، والترقية من الإدارة فقط (حماية من تصعيد الصلاحيات)
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role: userRole } }
         });
         if (error) Alert.alert('خطأ التسجيل', error.message);
         else Alert.alert('نجاح 🎊', 'تم إنشاء حسابك بنجاح! نورتنا.');
