@@ -15,6 +15,7 @@ import './Dashboard.css';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [refreshTick, setRefreshTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -142,19 +143,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRefresh = () => {
+    setRefreshTick(t => t + 1); // يعيد تركيب التبويب النشط ليعيد جلب بياناته فعلاً
+    if (activeTab === 'overview') fetchDashboardData();
+    else if (activeTab === 'settings') fetchSettingsData();
+  };
+
   return (
     <AdminGuard>
-      <div className="dashboard-container">
+      <div className="dashboard-wrapper">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         
         <main className="main-content">
           {(loading || saving) && <div className="loading-linear-bar"></div>}
           
-          <TopHeader 
-            loading={loading} 
-            onRefresh={activeTab === 'overview' ? fetchDashboardData : fetchSettingsData} 
+          <TopHeader
+            loading={loading}
+            onRefresh={handleRefresh}
           />
 
+          <React.Fragment key={refreshTick}>
           {activeTab === 'overview' && (
             <OverviewTab stats={stats} topBrands={topBrands} recentRequests={recentRequests} loading={loading} />
           )}
@@ -197,6 +205,7 @@ export default function AdminDashboard() {
           {activeTab === 'banners' && (
              <BannersTab logAction={logAction} />
           )}
+          </React.Fragment>
 
         </main>
       </div>

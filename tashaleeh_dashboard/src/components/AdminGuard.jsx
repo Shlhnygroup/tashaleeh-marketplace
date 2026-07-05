@@ -105,7 +105,7 @@ export default function AdminGuard({ children }) {
     );
   }
 
-  if (profile && profile.role !== 'Admin') {
+  if (!profile || profile.role !== 'Admin') {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#070707', color: '#FFF', textAlign: 'center', padding: 20}}>
         <ShieldAlert size={80} color="#FF3B30" style={{marginBottom: 20}}/>
@@ -118,7 +118,7 @@ export default function AdminGuard({ children }) {
     );
   }
 
-  if (profile && profile.is_blocked) {
+  if (profile.is_blocked) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#070707', color: '#FFF', textAlign: 'center', padding: 20}}>
         <ShieldAlert size={80} color="#FF3B30" style={{marginBottom: 20}}/>

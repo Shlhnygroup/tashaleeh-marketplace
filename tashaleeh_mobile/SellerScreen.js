@@ -313,6 +313,11 @@ export default function SellerScreen({ navigate }) {
     // ✅ FIX: إزالة focus قبل الإرسال
     Keyboard.dismiss();
 
+    if (!sellerProfile.is_online) {
+      Alert.alert('متجرك متوقّف ⏸️', 'فعّل "حالة المتجر" من الإعدادات لتتمكن من تقديم العروض.');
+      return;
+    }
+
     if (!offerPrice) {
       Alert.alert("تنبيه", "الرجاء إدخال السعر أولاً");
       return;

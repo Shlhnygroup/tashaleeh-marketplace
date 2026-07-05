@@ -44,9 +44,14 @@ CREATE POLICY "Profiles viewable by self or admin" ON public.profiles
   FOR SELECT USING (auth.uid() = id OR public.is_admin());
 
 -- view عام يكشف فقط حقول العرض (الاسم والصورة) — بدون email/phone/location/bio
-CREATE OR REPLACE VIEW public.public_profiles AS
-  SELECT id, display_name, avatar_url FROM public.profiles;
-GRANT SELECT ON public.public_profiles TO anon, authenticated;
+-- security_invoker=false (السلوك الافتراضي): الـ view يكشف الأعمدة الثلاثة فقط لكل الصفوف
+-- (email/phone/location غير موجودة فيه فلا تُكشف). القراءة للمسجّلين فقط (لا anon) واستثناء المحظورين.
+CREATE OR REPLACE VIEW public.public_profiles
+  WITH (security_invoker = false) AS
+  SELECT id, display_name, avatar_url FROM public.profiles
+  WHERE COALESCE(is_blocked, false) = false;
+REVOKE ALL ON public.public_profiles FROM anon, PUBLIC;
+GRANT SELECT ON public.public_profiles TO authenticated;
 
 -- نفس المبدأ لملفات البائعين: إخفاء وثيقة السجل التجاري واسم المدير، وإتاحة حقول العرض
 DROP POLICY IF EXISTS "Seller profiles are viewable by everyone" ON public.seller_profiles;
@@ -54,10 +59,12 @@ DROP POLICY IF EXISTS "Seller profiles viewable by self or admin" ON public.sell
 CREATE POLICY "Seller profiles viewable by self or admin" ON public.seller_profiles
   FOR SELECT USING (auth.uid() = id OR public.is_admin());
 
-CREATE OR REPLACE VIEW public.public_seller_profiles AS
+CREATE OR REPLACE VIEW public.public_seller_profiles
+  WITH (security_invoker = false) AS
   SELECT id, handled_brands, is_online, rating, rating_count, store_location
   FROM public.seller_profiles;
-GRANT SELECT ON public.public_seller_profiles TO anon, authenticated;
+REVOKE ALL ON public.public_seller_profiles FROM anon, PUBLIC;
+GRANT SELECT ON public.public_seller_profiles TO authenticated;
 
 -- ------------------------------------------------------------
 -- 3) منع البائع من تعديل تقييمه يدوياً (rating / rating_count)
@@ -192,6 +199,33 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.complete_purchase(uuid, uuid, numeric) TO authenticated;
+
+-- ------------------------------------------------------------
+-- 6) تثبيت search_path للدوال الأمنية (حماية من التلاعب بمسار البحث)
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'Admin');
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.is_user_blocked(user_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = user_id AND is_blocked = true);
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.increment_request_views(request_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE public.requests SET views = COALESCE(views, 0) + 1 WHERE id = request_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.increment_request_rejections(request_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE public.requests SET rejections = COALESCE(rejections, 0) + 1 WHERE id = request_id;
+END; $$;
 
 NOTIFY pgrst, 'reload schema';
 SELECT '✅ Migration V4.3: حماية شاملة (صلاحيات + PII + تقييم موثّق + تسجيل آمن + بيع موثّق).' AS status;

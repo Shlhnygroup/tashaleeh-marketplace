@@ -35,6 +35,12 @@ module.exports = {
     orientation: 'portrait',
     userInterfaceStyle: 'dark',
     platforms: ['ios', 'android', 'web'],
+    plugins: [
+      ['expo-image-picker', {
+        photosPermission: 'يستخدم التطبيق صورك لإرفاق صور القطع والملف الشخصي.',
+        cameraPermission: 'يستخدم التطبيق الكاميرا لالتقاط صور القطع.'
+      }],
+    ],
     // ملاحظة: قبل النشر، أضِف الأيقونة وشاشة البداية في مجلد ./assets ثم فعّل السطور التالية:
     // icon: './assets/icon.png',
     // splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: '#070707' },
