@@ -74,6 +74,38 @@ export default function SettingsTab({
              </div>
           </div>
 
+          <div className="form-group">
+            <label>الآيبان لتحويل العمولة (IBAN)</label>
+            <input
+              type="text"
+              className="dark-input"
+              value={appSettings.commission_iban || ''}
+              onChange={(e) => setAppSettings({...appSettings, commission_iban: e.target.value})}
+              placeholder="SAxxxxxxxxxxxxxxxxxxxxxxxx"
+            />
+            <small>يظهر للمشتري عند الضغط على "دفع العمولة".</small>
+          </div>
+          <div style={{display: 'flex', gap: 15, marginBottom: 15}}>
+            <div className="form-group" style={{flex: 1}}>
+              <label>اسم البنك</label>
+              <input
+                type="text"
+                className="dark-input"
+                value={appSettings.bank_name || ''}
+                onChange={(e) => setAppSettings({...appSettings, bank_name: e.target.value})}
+              />
+            </div>
+            <div className="form-group" style={{flex: 1}}>
+              <label>اسم صاحب الحساب</label>
+              <input
+                type="text"
+                className="dark-input"
+                value={appSettings.account_name || ''}
+                onChange={(e) => setAppSettings({...appSettings, account_name: e.target.value})}
+              />
+            </div>
+          </div>
+
           <button className="save-btn" onClick={saveSettings} disabled={saving || loading}>
             {saving ? 'جاري الحفظ...' : <><Save size={18}/> حفظ السياسات المتقدمة</>}
           </button>

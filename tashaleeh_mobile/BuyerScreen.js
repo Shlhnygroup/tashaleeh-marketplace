@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAr
 import { supabase } from './supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import { decode } from 'base64-arraybuffer';
 import { SAUDI_CITIES, formatArDate, COLORS } from './utils';
 
@@ -24,8 +25,9 @@ export default function BuyerScreen({ navigate }) {
   const [cityModalVisible, setCityModalVisible] = useState(false); 
   
   // V2 Dynamic Settings
-  const [appSettings, setAppSettings] = useState({ whatsapp_number: '', terms_conditions: '', privacy_policy: '' });
-  const [policyModalVisible, setPolicyModalVisible] = useState(false);  
+  const [appSettings, setAppSettings] = useState({ whatsapp_number: '', terms_conditions: '', privacy_policy: '', commission_rate: 20, commission_iban: '', bank_name: '', account_name: '' });
+  const [policyModalVisible, setPolicyModalVisible] = useState(false);
+  const [commissionModal, setCommissionModal] = useState(false);
   
   // V4 Banners
   const [banners, setBanners] = useState([]);
@@ -278,6 +280,14 @@ export default function BuyerScreen({ navigate }) {
     fetchMyRequests();
     fetchSettingsFromDB();
   }, []);
+
+  const copyIban = async () => {
+    try {
+      await Clipboard.setStringAsync(appSettings.commission_iban || '');
+      if (Platform.OS === 'web') alert('تم نسخ الآيبان ✅');
+      else Alert.alert('تم', 'تم نسخ الآيبان بنجاح ✅');
+    } catch (e) {}
+  };
 
   const openWhatsAppSupport = () => {
     if (!appSettings.whatsapp_number) {
@@ -668,6 +678,69 @@ export default function BuyerScreen({ navigate }) {
         </View>
       )}
 
+      {/* شريط دفع العمولة السفلي */}
+      <View style={styles.commissionBar}>
+        <TouchableOpacity style={styles.commissionBtn} onPress={() => setCommissionModal(true)}>
+          <Ionicons name="card-outline" size={20} color="#000" style={{marginLeft: 8}} />
+          <Text style={styles.commissionBtnText}>دفع العمولة</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Commission Payment Modal */}
+      <Modal visible={commissionModal} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, {height: 'auto', paddingBottom: 30}]}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15}}>
+              <TouchableOpacity onPress={() => setCommissionModal(false)}><Ionicons name="close-circle" size={28} color="#666" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>دفع العمولة 💳</Text>
+            </View>
+
+            <View style={styles.commissionAmountBox}>
+              <Text style={{color: '#888', textAlign: 'center', fontSize: 14}}>قيمة العمولة</Text>
+              <Text style={{color: '#FF8C00', textAlign: 'center', fontSize: 36, fontWeight: '900', marginTop: 4}}>
+                {appSettings.commission_rate || 20} <Text style={{fontSize: 16, color: '#888'}}>ريال</Text>
+              </Text>
+            </View>
+
+            <Text style={{color: '#FFF', textAlign: 'right', fontWeight: 'bold', marginBottom: 12, fontSize: 15}}>حوّل المبلغ إلى الحساب التالي:</Text>
+
+            <View style={styles.payRow}>
+              <TouchableOpacity onPress={copyIban} style={styles.copyBtn}>
+                <Ionicons name="copy-outline" size={16} color="#00D8FF" />
+                <Text style={{color: '#00D8FF', fontSize: 12, marginRight: 4, fontWeight: 'bold'}}>نسخ</Text>
+              </TouchableOpacity>
+              <View style={{flex: 1}}>
+                <Text style={styles.payLabel}>الآيبان (IBAN)</Text>
+                <Text selectable style={styles.payValueMono}>{appSettings.commission_iban || '—'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.payRow}>
+              <View style={{flex: 1}}>
+                <Text style={styles.payLabel}>اسم البنك</Text>
+                <Text style={styles.payValue}>{appSettings.bank_name || '—'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.payRow}>
+              <View style={{flex: 1}}>
+                <Text style={styles.payLabel}>اسم صاحب الحساب</Text>
+                <Text style={styles.payValue}>{appSettings.account_name || '—'}</Text>
+              </View>
+            </View>
+
+            <Text style={{color: '#888', fontSize: 12, textAlign: 'right', marginTop: 14, lineHeight: 20}}>
+              بعد التحويل، أرسل صورة الإيصال عبر الدعم لتأكيد الدفع.
+            </Text>
+
+            <TouchableOpacity style={[styles.whatsappBtn, {marginTop: 16}]} onPress={openWhatsAppSupport}>
+              <Ionicons name="logo-whatsapp" size={22} color="#FFF" style={{marginLeft: 8}} />
+              <Text style={styles.whatsappBtnText}>إرسال الإيصال عبر الدعم</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Brands Selector Modal */}
       <Modal visible={brandModalVisible} transparent={true} animationType="slide">
         <View style={styles.modalOverlay}>
@@ -950,5 +1023,16 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
   emptySub: { color: '#777', textAlign: 'center', lineHeight: 22, fontSize: 14, marginBottom: 25 },
   emptyBtn: { backgroundColor: '#FF8C00', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25 },
-  emptyBtnText: { color: '#000', fontWeight: 'bold' }
+  emptyBtnText: { color: '#000', fontWeight: 'bold' },
+
+  // شريط ونافذة دفع العمولة
+  commissionBar: { backgroundColor: '#0A0A0A', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1A1A1A' },
+  commissionBtn: { flexDirection: 'row', backgroundColor: '#FF8C00', paddingVertical: 15, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  commissionBtnText: { color: '#000', fontSize: 16, fontWeight: '900' },
+  commissionAmountBox: { backgroundColor: 'rgba(255,140,0,0.08)', borderRadius: 16, padding: 18, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(255,140,0,0.3)' },
+  payRow: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#0A0A0A', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#222' },
+  payLabel: { color: '#888', fontSize: 12, textAlign: 'right', marginBottom: 4 },
+  payValue: { color: '#FFF', fontSize: 15, textAlign: 'right', fontWeight: 'bold' },
+  payValueMono: { color: '#FFF', fontSize: 15, textAlign: 'right', fontWeight: 'bold', letterSpacing: 1 },
+  copyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,216,255,0.1)', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, marginLeft: 10, borderWidth: 1, borderColor: 'rgba(0,216,255,0.3)' }
 });
