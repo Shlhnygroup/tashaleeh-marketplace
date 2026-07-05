@@ -10,6 +10,11 @@ dist/
 .cache/
 *.log
 
+# Expo
+.expo/
+web-dev-crash.log
+out3.txt
+
 # Environment variables
 .env
 .env.local
