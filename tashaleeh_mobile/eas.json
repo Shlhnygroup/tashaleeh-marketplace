@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "buyer-preview": {
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_APP_FLAVOR": "buyer" },
+      "android": { "buildType": "apk" }
+    },
+    "seller-preview": {
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_APP_FLAVOR": "seller" },
+      "android": { "buildType": "apk" }
+    },
+    "buyer-production": {
+      "env": { "EXPO_PUBLIC_APP_FLAVOR": "buyer" },
+      "autoIncrement": true
+    },
+    "seller-production": {
+      "env": { "EXPO_PUBLIC_APP_FLAVOR": "seller" },
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
