@@ -173,6 +173,10 @@ BEGIN
     RAISE EXCEPTION 'غير مصرّح: لست صاحب هذا الطلب';
   END IF;
 
+  IF public.is_user_blocked(auth.uid()) THEN
+    RAISE EXCEPTION 'حسابك محظور';
+  END IF;
+
   -- تحقّق أن للبائع عرضاً فعلياً على هذا الطلب، واشتق السعر منه
   SELECT price INTO v_price FROM public.responses
    WHERE request_id = p_request_id AND seller_id = p_seller_id

@@ -223,3 +223,45 @@ body {
 .btn-icon.block:hover { color: var(--accent-alert); border-color: var(--accent-alert); }
 .btn-icon.unblock { color: #6eff35; border-color: rgba(110, 255, 53, 0.3); }
 .btn-icon.promote:hover { color: var(--accent-off); border-color: var(--accent-off); }
+
+/* ===== كلاسات مكمّلة (إصلاح عناصر كانت غير منسّقة) ===== */
+.tab-content { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn 0.3s ease; }
+
+.table-container, .table-responsive { width: 100%; overflow-x: auto; }
+
+/* الجداول التي تستخدم users-table تأخذ نفس تنسيق data-table */
+.users-table { width: 100%; border-collapse: collapse; text-align: right; }
+.users-table th { padding: 15px 10px; color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 600; }
+.users-table td { padding: 15px 10px; border-bottom: 1px solid var(--border); color: #CCC; vertical-align: middle; }
+
+.search-bar { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border: 1px solid var(--border); padding: 12px 18px; border-radius: 14px; color: var(--text-dim); }
+.search-bar input { flex: 1; background: none; border: none; color: #FFF; outline: none; font-family: 'Cairo'; font-size: 14px; }
+
+.mono-text { font-family: monospace; color: #999; background: #111; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.text-center { text-align: center !important; }
+.small { font-size: 12px; }
+
+.loading-linear-bar { height: 3px; background: linear-gradient(90deg, var(--accent-req), var(--accent-off)); border-radius: 3px; margin-bottom: 20px; animation: loadingBar 1.2s ease-in-out infinite; }
+@keyframes loadingBar { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+.analytics-sidebar { display: flex; flex-direction: column; }
+.top-brands-list { display: flex; flex-direction: column; }
+.system-health { display: flex; flex-direction: column; gap: 4px; }
+
+/* شارات الحالة الإضافية */
+.status-badge.bought { background: rgba(110, 255, 53, 0.12); color: #6eff35; }
+.status-badge.cancelled { background: rgba(255, 59, 48, 0.12); color: var(--accent-alert); }
+.status-badge.closed { background: rgba(136, 136, 136, 0.15); color: #aaa; }
+.status-badge.active, .status-badge.resolved { background: rgba(110, 255, 53, 0.12); color: #6eff35; }
+.log-badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; background: rgba(0, 216, 255, 0.1); color: var(--accent-off); font-family: monospace; }
+
+/* مفتاح التبديل (البنرات) */
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; inset: 0; background: #333; transition: 0.3s; border-radius: 26px; }
+.slider:before { content: ''; position: absolute; height: 20px; width: 20px; right: 3px; bottom: 3px; background: #888; transition: 0.3s; border-radius: 50%; }
+.switch input:checked + .slider { background: rgba(0, 216, 255, 0.3); }
+.switch input:checked + .slider:before { transform: translateX(-20px); background: var(--accent-off); }
+.slider.round { border-radius: 26px; }
