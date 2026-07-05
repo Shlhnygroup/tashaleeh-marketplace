@@ -42,7 +42,30 @@ CREATE POLICY "tashaleeh own delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'parts_images' AND (owner = auth.uid() OR public.is_admin()));
 
-SELECT '✅ سياسات التخزين طُبّقت — اختبر الرفع من كل الشاشات.' AS status;
+-- ============================================================
+-- بكت خاص لملفات الدردشة (غير عام) — تُقرأ عبر روابط موقّتة (createSignedUrl) فقط
+-- (التطبيق يرفع ملفات الدردشة هنا ويولّد رابطاً موقّتاً عند فتح الملف)
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('chat-files', 'chat-files', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+DROP POLICY IF EXISTS "chat-files own insert" ON storage.objects;
+CREATE POLICY "chat-files own insert" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'chat-files' AND name LIKE (auth.uid()::text || '/%'));
+
+DROP POLICY IF EXISTS "chat-files auth read" ON storage.objects;
+CREATE POLICY "chat-files auth read" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'chat-files');
+
+DROP POLICY IF EXISTS "chat-files own delete" ON storage.objects;
+CREATE POLICY "chat-files own delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'chat-files' AND (owner = auth.uid() OR public.is_admin()));
+
+SELECT '✅ سياسات التخزين طُبّقت (parts_images + chat-files الخاص) — اختبر الرفع.' AS status;
 
 -- ملاحظة للأمان الكامل (مرحلة لاحقة): الوثائق الحسّاسة (السجل التجاري) وملفات
 -- الدردشة يُفضّل وضعها في بكت "خاص" (غير عام) واستخدام createSignedUrl لروابط

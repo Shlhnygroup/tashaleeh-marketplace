@@ -161,22 +161,21 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const fileExt = fileAsset.name.split('.').pop();
-      const filePath = `chat_files/${user.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
+      const filePath = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${fileExt}`; // بكت خاص
 
       // Fetch the file as a blob
       const response = await fetch(fileAsset.uri);
       const blob = await response.blob();
 
-      const { data, error } = await supabase.storage
-        .from('parts_images')
+      const { error } = await supabase.storage
+        .from('chat-files')
         .upload(filePath, blob, { contentType: fileAsset.mimeType || 'application/octet-stream' });
         
       if (error) {
          Alert.alert("خطأ في رفع الملف", error.message);
          console.log("Chat file upload error:", error);
       } else {
-         const { data: { publicUrl } } = supabase.storage.from('parts_images').getPublicUrl(filePath);
-         setPublicFileUrl(publicUrl);
+         setPublicFileUrl(filePath); // نخزّن المسار (بكت خاص) ونولّد رابطاً موقّتاً عند الفتح
          setFileUri(fileAsset.uri);
       }
     } catch (e) {
@@ -185,6 +184,18 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
     } finally {
       setFileUploading(false);
       setIsProcessing(false);
+    }
+  };
+
+  const openFile = async (fileRef) => {
+    if (!fileRef) return;
+    if (fileRef.startsWith('http')) { Linking.openURL(fileRef); return; } // روابط قديمة عامة (توافق خلفي)
+    try {
+      const { data, error } = await supabase.storage.from('chat-files').createSignedUrl(fileRef, 3600);
+      if (error || !data?.signedUrl) throw (error || new Error('no-url'));
+      Linking.openURL(data.signedUrl);
+    } catch (e) {
+      Alert.alert('خطأ', 'تعذّر فتح الملف.');
     }
   };
 
@@ -291,7 +302,7 @@ export default function ChatScreen({ navigate, params, currentUser, currentRole 
                     </TouchableOpacity>
                   ) : null}
                   {msg.file_url ? (
-                    <TouchableOpacity onPress={() => Linking.openURL(msg.file_url)} style={styles.fileBubble}>
+                    <TouchableOpacity onPress={() => openFile(msg.file_url)} style={styles.fileBubble}>
                       <Ionicons name="document-attach-outline" size={24} color={isMe ? "#000" : "#FFF"} />
                       <Text style={[styles.fileText, {color: isMe ? "#000" : "#FFF"}]}>فتح الملف المرفق</Text>
                     </TouchableOpacity>
